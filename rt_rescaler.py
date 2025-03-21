@@ -1,5 +1,6 @@
 
 import polars as pl
+from scipy import stats
 import argparse
 import sys
 
@@ -34,7 +35,15 @@ else:
             outtable.write_parquet(outfile)
         else:
             outtable.glimpse()
+        exit(0)
     else:
         template_table = pl.read_parquet(namespace.template)
-        
-
+        intab_overlap = intable.filter(pl.col('Precursor.Id').is_in(template_table['Precursor.Id']))
+        template_overlap = template_table.filter(pl.col('Precursor.Id').is_in(intable['Precursor.Id']))
+        lr = stats.linregress(intab_overlap[colname], template_overlap[colname])
+        print(lr)
+        outtable = intable.with_columns(pl.col(colname).mul(lr.slope).add(lr.intercept))
+        if 'outfile' in namespace:
+            outfile = namespace.outfile
+            outtable.write_parquet(outfile)
+        exit(0)
